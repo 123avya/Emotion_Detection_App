@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emotion Detection Chatbot</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      width: 100%;
+      max-width: 800px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 90vh; /* Make the container take up most of the viewport height */
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 25px; /* Smaller header padding */
+      text-align: center;
+    }
+    .header h1 { font-size: 24px; margin-bottom: 5px; }
+    .header p { opacity: 0.9; font-size: 13px; }
+    .chat-area {
+      flex-grow: 1; /* Makes the chat area fill the remaining space */
+      overflow-y: auto;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+    .message {
+      margin-bottom: 15px;
+      animation: fadeIn 0.3s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .user-message {
+      display: flex;
+      justify-content: flex-end;
+    }
+    .user-message .bubble {
+      background: #667eea;
+      color: white;
+      padding: 12px 18px;
+      border-radius: 18px 18px 4px 18px;
+      max-width: 70%;
+      word-wrap: break-word;
+    }
+    .bot-message {
+      display: flex;
+      justify-content: flex-start;
+    }
+    .bot-message .bubble {
+      background: white;
+      color: #333;
+      padding: 12px 18px;
+      border-radius: 18px 18px 18px 4px;
+      max-width: 70%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      word-wrap: break-word;
+    }
+    .error-message {
+        color: #dc3545;
+        padding: 10px;
+        text-align: center;
+        font-size: 14px;
+    }
+    .emotion-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    .emotion-joy { background: #d4edda; color: #155724; }
+    .emotion-sadness { background: #cce5ff; color: #004085; }
+    .emotion-anger { background: #f8d7da; color: #721c24; }
+    .emotion-fear { background: #fff3cd; color: #856404; }
+    .emotion-love { background: #f8d7e5; color: #721c47; }
+    .emotion-surprise { background: #e2e3e5; color: #383d41; }
+    .confidence {
+      font-size: 11px;
+      color: #666;
+      margin-top: 5px;
+    }
+    .probabilities {
+      margin-top: 10px;
+      font-size: 11px;
+    }
+    .prob-bar {
+      background: #e9ecef;
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 4px 0;
+    }
+    .prob-fill {
+      height: 100%;
+      transition: width 0.3s;
+    }
+    .input-area {
+      padding: 15px 20px;
+      background: white;
+      border-top: 1px solid #dee2e6;
+    }
+    .input-wrapper {
+      display: flex;
+      gap: 10px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 18px;
+      border: 2px solid #e9ecef;
+      border-radius: 25px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    input[type="text"]:focus {
+      border-color: #667eea;
+    }
+    button {
+      padding: 12px 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    .timestamp {
+      font-size: 10px;
+      color: #999;
+      margin-top: 4px;
+      text-align: right;
+      display: block;
+    }
+    .reset-btn {
+        margin-left: 10px;
+        padding: 12px 15px;
+        background: #f8d7da;
+        color: #721c24;
+        font-weight: normal;
+    }
+    .reset-btn:hover {
+        background: #f5c6cb;
+        box-shadow: none;
+        transform: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎭 Emotion Detection Chatbot</h1>
+      <p>Share your thoughts and I'll detect the emotion behind them</p>
+    </div>
+    
+    <div class="chat-area" id="chatArea">
+      {% for message in history %}
+        {% if message.sender == 'user' %}
+        <div class="user-message message">
+            <div class="bubble">
+                {{ message.text }}
+                {% if message.timestamp %}
+                <div class="timestamp">{{ message.timestamp }}</div>
+                {% endif %}
+            </div>
+        </div>
+        {% elif message.sender == 'bot' %}
+        <div class="bot-message message">
+            <div class="bubble">
+                {% if not message.prediction_text %}
+                    {{ message.text }}
+                {% else %}
+                    <div style="margin-bottom: 8px;">{{ message.text }}</div>
+                    <div><strong>Detected Emotion:</strong></div>
+                    <span class="emotion-badge emotion-{{ message.prediction_text.lower() }}">
+                        {{ message.prediction_text }} 
+                        {% if message.confidence %}({{ message.confidence }}% confident){% endif %}
+                    </span>
+                    
+                    {% if message.top_preds %}
+                    <div class="probabilities">
+                        <strong>Emotion Analysis:</strong>
+                        {% for lbl, prob in message.top_preds %}
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 6px;">
+                                <span>{{ lbl.capitalize() }}</span>
+                                <span>{{ '%.1f'|format(prob*100) }}%</span>
+                            </div>
+                            <div class="prob-bar">
+                                <div class="prob-fill" style="width: {{ prob*100 }}%; background: 
+                                {% if lbl == 'joy' %}#28a745
+                                {% elif lbl == 'sadness' %}#17a2b8
+                                {% elif lbl == 'anger' %}#dc3545
+                                {% elif lbl == 'fear' %}#ffc107
+                                {% elif lbl == 'love' %}#e83e8c
+                                {% else %}#6c757d{% endif %};">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if message.cleaned_input %}
+                    <details style="margin-top: 10px; font-size: 11px; color: #666;">
+                        <summary style="cursor: pointer;">Technical details</summary>
+                        <div style="margin-top: 5px;">
+                            <strong>Processed text:</strong> {{ message.cleaned_input }}
+                        </div>
+                    </details>
+                    {% endif %}
+                {% endif %}
+                {% if message.timestamp %}
+                <div class="timestamp">{{ message.timestamp }}</div>
+                {% endif %}
+            </div>
+        </div>
+        {% elif message.sender == 'error' %}
+        <div class="error-message message">{{ message.text }}</div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    
+    <div class="input-area">
+      <form method="POST" action="/" id="chatForm">
+        <div class="input-wrapper">
+          <input 
+            type="text" 
+            name="text" 
+            id="textInput"
+            placeholder="Type your message here..." 
+            required
+            autocomplete="off"
+          >
+          <button type="submit">Send</button>
+          <button type="button" onclick="window.location.href='/reset'" class="reset-btn">New Chat</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Auto-scroll to bottom of chat
+    const chatArea = document.getElementById('chatArea');
+    // Scroll smoothly to the bottom when the page loads
+    chatArea.scrollTop = chatArea.scrollHeight;
+    
+    // Focus input field
+    document.getElementById('textInput').focus();
+    
+    // Handle form submission
+    document.getElementById('chatForm').addEventListener('submit', function() {
+      const input = document.getElementById('textInput');
+      if (input.value.trim()) {
+        // Add loading state
+        const sendButton = this.querySelector('button[type="submit"]');
+        sendButton.textContent = 'Analyzing...';
+        sendButton.disabled = true;
+        
+        // Disable reset button too
+        const resetButton = this.querySelector('.reset-btn');
+        resetButton.disabled = true;
+      }
+    });
+  </script>
+</body>
+</html>
